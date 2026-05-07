@@ -1,0 +1,220 @@
+# index.html
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Student Grade Protection System</title>
+
+<style>
+body{
+font-family:Arial;
+background:#f4f4f4;
+margin:0;
+padding:0;
+}
+
+.container{
+width:80%;
+max-width:800px;
+margin:40px auto;
+background:white;
+padding:30px;
+border-radius:12px;
+box-shadow:0 0 10px rgba(0,0,0,0.2);
+}
+
+h1,h2{
+text-align:center;
+}
+
+input{
+width:100%;
+padding:10px;
+margin:10px 0;
+border:1px solid #ccc;
+border-radius:5px;
+}
+
+button{
+padding:10px 20px;
+background:#007bff;
+color:white;
+border:none;
+border-radius:5px;
+cursor:pointer;
+}
+
+button:hover{
+background:#0056b3;
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+margin-top:20px;
+}
+
+th,td{
+border:1px solid #ddd;
+padding:10px;
+text-align:center;
+}
+
+th{
+background:#007bff;
+color:white;
+}
+
+.safe{
+color:green;
+font-weight:bold;
+}
+
+.tampered{
+color:red;
+font-weight:bold;
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+<h1>Student Grade Protection System</h1>
+
+<h2>Login</h2>
+<input type="text" id="username" placeholder="Username">
+<input type="password" id="password" placeholder="Password">
+<button onclick="login()">Login</button>
+
+<div id="system" style="display:none;">
+<hr>
+<h2>Add Grade</h2>
+
+<input type="text" id="studentId" placeholder="Student ID">
+<input type="text" id="studentName" placeholder="Student Name">
+<input type="text" id="subject" placeholder="Subject">
+<input type="text" id="grade" placeholder="Grade">
+
+<button onclick="addGrade()">Add Grade</button>
+
+<h2>Grades</h2>
+
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Name</th>
+<th>Subject</th>
+<th>Grade</th>
+<th>Hash</th>
+<th>Status</th>
+<th>Tamper</th>
+</tr>
+</thead>
+<tbody id="gradesTable"></tbody>
+</table>
+</div>
+</div>
+
+<script>
+
+let grades = JSON.parse(localStorage.getItem("grades")) || [];
+
+async function generateHash(data){
+const encoder = new TextEncoder();
+const dataBuffer = encoder.encode(data);
+const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
+const hashArray = Array.from(new Uint8Array(hashBuffer));
+const hashHex = hashArray.map(b => b.toString(16).padStart(2,'0')).join('');
+return hashHex;
+}
+
+function login(){
+const username = document.getElementById('username').value;
+const password = document.getElementById('password').value;
+
+if(username === 'admin' && password === 'admin123'){
+document.getElementById('system').style.display = 'block';
+alert('Login Successful');
+loadGrades();
+}else{
+alert('Wrong Username or Password');
+}
+}
+
+async function addGrade(){
+const studentId = document.getElementById('studentId').value;
+const studentName = document.getElementById('studentName').value;
+const subject = document.getElementById('subject').value;
+const grade = document.getElementById('grade').value;
+
+const data = studentId + studentName + subject + grade;
+const hash = await generateHash(data);
+
+const record = {
+studentId,
+studentName,
+subject,
+grade,
+hash
+};
+
+grades.push(record);
+localStorage.setItem('grades', JSON.stringify(grades));
+
+loadGrades();
+
+alert('Grade Added Successfully');
+}
+
+async function loadGrades(){
+const table = document.getElementById('gradesTable');
+table.innerHTML = '';
+
+for(let i=0; i<grades.length; i++){
+const g = grades[i];
+
+const newHash = await generateHash(g.studentId + g.studentName + g.subject + g.grade);
+
+let status = '';
+
+if(newHash === g.hash){
+status = '<span class="safe">SAFE</span>';
+}else{
+status = '<span class="tampered">TAMPERED</span>';
+}
+
+const row = `
+<tr>
+<td>${g.studentId}</td>
+<td>${g.studentName}</td>
+<td>${g.subject}</td>
+<td>${g.grade}</td>
+<td>${g.hash.substring(0,15)}...</td>
+<td>${status}</td>
+<td><button onclick="tamper(${i})">Modify</button></td>
+</tr>
+`;
+
+table.innerHTML += row;
+}
+}
+
+function tamper(index){
+grades[index].grade = '100';
+localStorage.setItem('grades', JSON.stringify(grades));
+loadGrades();
+}
+
+loadGrades();
+
+</script>
+
+</body>
+</html>
+```
+
+
